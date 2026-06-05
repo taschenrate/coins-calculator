@@ -65,7 +65,11 @@ function calculateCoins(checks) {
     return 0;
   }
 
-  let coins = 300 + Math.min(amount, 450) * 2;
+  let coins = 300;
+
+  if (amount > 300) {
+    coins += (Math.min(amount, 450) - 300) * 2;
+  }
 
   if (amount >= 450) {
     coins += 1000;
