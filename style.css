@@ -37,6 +37,10 @@ body {
   overflow-x: hidden;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 body::before {
   position: fixed;
   inset: 0;
@@ -396,6 +400,11 @@ select:focus {
   box-shadow: 0 18px 38px rgba(34, 197, 94, 0.23);
 }
 
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #fb7185);
+  box-shadow: 0 18px 38px rgba(239, 68, 68, 0.24);
+}
+
 .btn-soft {
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.07);
@@ -739,6 +748,132 @@ tbody tr:last-child td {
   display: none !important;
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(59, 130, 246, 0.22), transparent 34%),
+    rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(14px);
+  animation: modal-fade 160ms ease both;
+}
+
+.modal-card {
+  position: relative;
+  display: grid;
+  width: min(460px, 100%);
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.055)),
+    rgba(15, 23, 42, 0.92);
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  animation: modal-pop 180ms ease both;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.modal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.modal-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(239, 68, 68, 0.26);
+  border-radius: 18px;
+  color: #fecaca;
+  background:
+    linear-gradient(145deg, rgba(239, 68, 68, 0.26), rgba(245, 158, 11, 0.09)),
+    rgba(255, 255, 255, 0.05);
+  box-shadow: 0 18px 40px rgba(239, 68, 68, 0.16);
+}
+
+.modal-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.modal-copy {
+  padding-right: 28px;
+}
+
+.modal-copy h2 {
+  margin: 8px 0 8px;
+  font-size: 25px;
+  line-height: 1.18;
+}
+
+.modal-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@keyframes modal-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .toast-container {
   position: fixed;
   right: 20px;
@@ -868,6 +1003,7 @@ tbody tr:last-child td {
   }
 
   .form-actions,
+  .modal-actions,
   .toolbar-actions {
     display: grid;
     grid-template-columns: 1fr;

@@ -10,12 +10,12 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=3" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js" async onload="window.handleExternalLibraryReady && window.handleExternalLibraryReady()"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" async></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js" async></script>
     <script src="https://unpkg.com/lucide@latest" async onload="window.handleExternalLibraryReady && window.handleExternalLibraryReady()"></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=3" defer></script>
   </head>
   <body>
     <header class="app-header">
@@ -293,6 +293,35 @@
         </div>
       </section>
     </main>
+
+    <div class="modal-overlay hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+      <div class="modal-card">
+        <button class="modal-close" id="confirmCloseButton" type="button" aria-label="Закрыть">
+          <i data-lucide="x"></i>
+        </button>
+
+        <span class="modal-icon" id="confirmIcon">
+          <i data-lucide="shield-alert"></i>
+        </span>
+
+        <div class="modal-copy">
+          <span class="section-kicker">Подтверждение</span>
+          <h2 id="confirmTitle">Подтвердите действие</h2>
+          <p id="confirmMessage">Это действие нельзя отменить.</p>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-soft" id="confirmCancelButton" type="button">
+            <i data-lucide="x-circle"></i>
+            Отмена
+          </button>
+          <button class="btn btn-danger" id="confirmAcceptButton" type="button">
+            <i data-lucide="trash-2"></i>
+            Удалить
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div class="toast-container" id="toastContainer" aria-live="polite"></div>
   </body>

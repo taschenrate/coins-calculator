@@ -7,6 +7,8 @@ let currentResult = null;
 let editingId = null;
 let topChart = null;
 let bulkPreviewRecords = [];
+let confirmResolver = null;
+let lastFocusedElement = null;
 
 const elements = {
   calculatorForm: document.getElementById("calculatorForm"),
@@ -37,6 +39,13 @@ const elements = {
   bulkPreviewTable: document.getElementById("bulkPreviewTable"),
   bulkEmpty: document.getElementById("bulkEmpty"),
   bulkSummary: document.getElementById("bulkSummary"),
+  confirmModal: document.getElementById("confirmModal"),
+  confirmIcon: document.getElementById("confirmIcon"),
+  confirmTitle: document.getElementById("confirmTitle"),
+  confirmMessage: document.getElementById("confirmMessage"),
+  confirmAcceptButton: document.getElementById("confirmAcceptButton"),
+  confirmCancelButton: document.getElementById("confirmCancelButton"),
+  confirmCloseButton: document.getElementById("confirmCloseButton"),
   toastContainer: document.getElementById("toastContainer"),
   statModerators: document.getElementById("statModerators"),
   statChecks: document.getElementById("statChecks"),
@@ -211,14 +220,20 @@ function editModerator(id) {
   elements.nicknameInput.focus();
 }
 
-function deleteModerator(id) {
+async function deleteModerator(id) {
   const moderator = moderators.find((item) => item.id === id);
 
   if (!moderator) {
     return;
   }
 
-  if (!window.confirm(`Удалить модератора ${moderator.nickname}?`)) {
+  const confirmed = await showConfirmModal({
+    title: "Удалить модератора?",
+    message: `Запись ${moderator.nickname} будет удалена из локальной базы.`,
+    confirmText: "Удалить"
+  });
+
+  if (!confirmed) {
     return;
   }
 
@@ -228,13 +243,19 @@ function deleteModerator(id) {
   showToast("Запись удалена", "success");
 }
 
-function clearDatabase() {
+async function clearDatabase() {
   if (moderators.length === 0) {
     showToast("База уже пустая", "info");
     return;
   }
 
-  if (!window.confirm("Вы точно хотите удалить всех модераторов?")) {
+  const confirmed = await showConfirmModal({
+    title: "Очистить базу?",
+    message: "Все сохраненные модераторы будут удалены из браузера.",
+    confirmText: "Очистить"
+  });
+
+  if (!confirmed) {
     return;
   }
 
@@ -566,13 +587,13 @@ function parsePastedLeaderboard(content) {
   const records = [];
 
   lines.forEach((line) => {
-    addBulkRecord(records, parseCompactLeaderboardLine(line));
+    addBulkRecord(records, parseCompactLeaderboardLine(line, records.length + 1));
   });
 
   const tokens = lines.flatMap((line) => line.split(/\t+/).map((part) => part.trim()).filter(Boolean));
   let index = 0;
 
-  while (index < tokens.length - 2) {
+  while (index < tokens.length - 1) {
     const position = tokens[index];
     const nickname = tokens[index + 1];
     const checks = tokens[index + 2];
@@ -585,26 +606,42 @@ function parsePastedLeaderboard(content) {
       continue;
     }
 
+    if (isNicknameToken(position) && isIntegerToken(nickname)) {
+      const amountToken = checks && isAmountToken(checks) ? checks : "";
+
+      addBulkRecord(records, createBulkRecord(position, nickname, "", amountToken, records.length + 1));
+      index += amountToken ? 3 : 2;
+      continue;
+    }
+
     index += 1;
   }
 
   return dedupeBulkRecords(records);
 }
 
-function parseCompactLeaderboardLine(line) {
+function parseCompactLeaderboardLine(line, fallbackPosition = 0) {
   const normalizedLine = line.replace(/\t/g, " ").replace(/\s+/g, " ").trim();
-  const match = normalizedLine.match(
+  const rankedMatch = normalizedLine.match(
     /^(\d{1,4})\s+([A-Za-zА-Яа-яЁё0-9_.-]+)\s+(\d{1,7})(?:\s+([\d\s.,]+(?:₽|р|руб\.?)?))?$/i
   );
 
-  if (!match) {
-    return null;
+  if (rankedMatch) {
+    return createBulkRecord(rankedMatch[2], rankedMatch[3], rankedMatch[1], rankedMatch[4] || "");
   }
 
-  return createBulkRecord(match[2], match[3], match[1], match[4] || "");
+  const plainMatch = normalizedLine.match(
+    /^([A-Za-zА-Яа-яЁё0-9_.-]+)\s+(\d{1,7})(?:\s+([\d\s.,]+(?:₽|р|руб\.?)?))?$/i
+  );
+
+  if (plainMatch) {
+    return createBulkRecord(plainMatch[1], plainMatch[2], "", plainMatch[3] || "", fallbackPosition);
+  }
+
+  return null;
 }
 
-function createBulkRecord(nickname, rawChecks, rawPosition, rawAmount = "") {
+function createBulkRecord(nickname, rawChecks, rawPosition, rawAmount = "", fallbackPosition = 0) {
   const checks = parseIntegerToken(rawChecks);
 
   if (!isNicknameToken(nickname) || checks === null) {
@@ -614,7 +651,7 @@ function createBulkRecord(nickname, rawChecks, rawPosition, rawAmount = "") {
   const amount = parseAmountToken(rawAmount);
 
   return {
-    sourcePosition: parseIntegerToken(rawPosition) || 0,
+    sourcePosition: parseIntegerToken(rawPosition) || fallbackPosition,
     nickname: nickname.trim(),
     checks,
     coins: amount === null ? calculateCoins(checks) : amount
@@ -794,6 +831,45 @@ function showToast(message, type = "info") {
     toast.style.transform = "translateY(8px)";
     window.setTimeout(() => toast.remove(), 180);
   }, 2600);
+}
+
+function showConfirmModal({ title, message, confirmText = "Подтвердить", icon = "shield-alert" }) {
+  if (confirmResolver) {
+    closeConfirmModal(false);
+  }
+
+  lastFocusedElement = document.activeElement;
+  elements.confirmTitle.textContent = title;
+  elements.confirmMessage.textContent = message;
+  elements.confirmAcceptButton.innerHTML = `<i data-lucide="trash-2"></i>${escapeHTML(confirmText)}`;
+  elements.confirmIcon.innerHTML = `<i data-lucide="${icon}"></i>`;
+  elements.confirmModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  refreshIcons();
+  elements.confirmAcceptButton.focus();
+
+  return new Promise((resolve) => {
+    confirmResolver = resolve;
+  });
+}
+
+function closeConfirmModal(result = false) {
+  if (!confirmResolver) {
+    return;
+  }
+
+  const resolve = confirmResolver;
+
+  confirmResolver = null;
+  elements.confirmModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+  resolve(result);
+
+  if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+    lastFocusedElement.focus();
+  }
+
+  lastFocusedElement = null;
 }
 
 function renderAll() {
@@ -1052,6 +1128,21 @@ elements.importCsvButton.addEventListener("click", () => elements.csvFileInput.c
 elements.bulkParseButton.addEventListener("click", () => calculateBulkPaste());
 elements.bulkSaveButton.addEventListener("click", saveBulkPreview);
 elements.bulkClearButton.addEventListener("click", clearBulkPaste);
+elements.confirmAcceptButton.addEventListener("click", () => closeConfirmModal(true));
+elements.confirmCancelButton.addEventListener("click", () => closeConfirmModal(false));
+elements.confirmCloseButton.addEventListener("click", () => closeConfirmModal(false));
+
+elements.confirmModal.addEventListener("click", (event) => {
+  if (event.target === elements.confirmModal) {
+    closeConfirmModal(false);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !elements.confirmModal.classList.contains("hidden")) {
+    closeConfirmModal(false);
+  }
+});
 
 elements.bulkPasteInput.addEventListener("paste", () => {
   window.setTimeout(() => calculateBulkPaste({ silent: true }), 0);
