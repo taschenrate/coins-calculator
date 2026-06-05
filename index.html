@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Калькулятор коинов модераторов</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" async onload="window.handleExternalLibraryReady && window.handleExternalLibraryReady()"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js" async></script>
+    <script src="https://unpkg.com/lucide@latest" async onload="window.handleExternalLibraryReady && window.handleExternalLibraryReady()"></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="shell header-layout">
+        <div class="header-copy">
+          <span class="eyebrow">
+            <i data-lucide="coins"></i>
+            Moderator rewards
+          </span>
+          <h1>Калькулятор коинов модераторов</h1>
+          <p>Мини-дашборд для расчета наград по проверкам</p>
+        </div>
+        <div class="header-summary" aria-label="Краткая статистика">
+          <span class="summary-label">Текущий фонд</span>
+          <strong id="headerCoins">0</strong>
+          <span class="summary-label">коинов</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell app-main">
+      <section class="stats-grid" aria-label="Статистика">
+        <article class="stat-card">
+          <span class="stat-icon stat-blue"><i data-lucide="users"></i></span>
+          <div>
+            <p>Всего модераторов</p>
+            <strong id="statModerators">0</strong>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon stat-violet"><i data-lucide="list-checks"></i></span>
+          <div>
+            <p>Всего проверок</p>
+            <strong id="statChecks">0</strong>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon stat-green"><i data-lucide="badge-dollar-sign"></i></span>
+          <div>
+            <p>Всего коинов</p>
+            <strong id="statCoins">0</strong>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon stat-amber"><i data-lucide="activity"></i></span>
+          <div>
+            <p>Среднее коинов</p>
+            <strong id="statAverage">0</strong>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon stat-pink"><i data-lucide="trophy"></i></span>
+          <div>
+            <p>Лучший модератор</p>
+            <strong id="statBest">—</strong>
+          </div>
+        </article>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="panel calculator-panel" id="calculatorPanel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Расчет</span>
+              <h2>Награда модератора</h2>
+            </div>
+            <span class="panel-icon"><i data-lucide="calculator"></i></span>
+          </div>
+
+          <form id="calculatorForm" class="calculator-form">
+            <label>
+              <span>Ник модератора</span>
+              <input
+                id="nicknameInput"
+                type="text"
+                autocomplete="off"
+                placeholder="Например: Moderator123"
+              />
+            </label>
+
+            <label>
+              <span>Количество проверок</span>
+              <input
+                id="checksInput"
+                type="number"
+                min="0"
+                step="1"
+                inputmode="numeric"
+                placeholder="Например: 1000"
+              />
+            </label>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">
+                <i data-lucide="sparkles"></i>
+                Рассчитать
+              </button>
+              <button class="btn btn-soft" id="resetFormButton" type="button">
+                <i data-lucide="rotate-ccw"></i>
+                Сбросить
+              </button>
+            </div>
+          </form>
+
+          <div class="result-card hidden" id="resultCard" aria-live="polite">
+            <div class="result-lines">
+              <p>Ник: <strong id="resultNickname">—</strong></p>
+              <p>Проверок: <strong id="resultChecks">0</strong></p>
+              <p>Коинов: <strong id="resultCoins">0</strong></p>
+            </div>
+            <button class="btn btn-success" id="saveResultButton" type="button">
+              <i data-lucide="save"></i>
+              Сохранить модератора
+            </button>
+          </div>
+        </article>
+
+        <article class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Лидеры</span>
+              <h2>Топ-5 по коинам</h2>
+            </div>
+            <span class="panel-icon"><i data-lucide="bar-chart-3"></i></span>
+          </div>
+
+          <div class="chart-wrap" id="chartWrap">
+            <canvas id="topChart" aria-label="Топ-5 модераторов по коинам"></canvas>
+            <div class="empty-state" id="chartEmpty">
+              <i data-lucide="bar-chart-horizontal"></i>
+              <p>Недостаточно данных для графика</p>
+            </div>
+          </div>
+
+          <div class="podium-list" id="podiumList" aria-label="Топ модераторов"></div>
+        </article>
+      </section>
+
+      <section class="panel data-panel">
+        <div class="data-header">
+          <div>
+            <span class="section-kicker">База</span>
+            <h2>Модераторы</h2>
+          </div>
+          <button class="btn btn-danger-outline" id="clearDatabaseButton" type="button">
+            <i data-lucide="trash-2"></i>
+            Очистить базу
+          </button>
+        </div>
+
+        <div class="toolbar">
+          <label class="search-field">
+            <i data-lucide="search"></i>
+            <input id="searchInput" type="search" placeholder="Поиск по нику" />
+          </label>
+
+          <label class="select-field">
+            <i data-lucide="arrow-up-down"></i>
+            <select id="sortSelect" aria-label="Сортировка">
+              <option value="coins-desc">По коинам: больше сначала</option>
+              <option value="coins-asc">По коинам: меньше сначала</option>
+              <option value="checks-desc">По проверкам: больше сначала</option>
+              <option value="checks-asc">По проверкам: меньше сначала</option>
+              <option value="nickname-asc">По нику: А-Я</option>
+              <option value="nickname-desc">По нику: Я-А</option>
+              <option value="date-desc">По дате: новые сначала</option>
+              <option value="date-asc">По дате: старые сначала</option>
+            </select>
+          </label>
+
+          <div class="toolbar-actions">
+            <button class="btn btn-soft" id="exportTxtButton" type="button">
+              <i data-lucide="file-down"></i>
+              Экспорт TXT
+            </button>
+            <button class="btn btn-soft" id="exportCsvButton" type="button">
+              <i data-lucide="download"></i>
+              Экспорт CSV
+            </button>
+            <button class="btn btn-soft" id="importTxtButton" type="button">
+              <i data-lucide="file-up"></i>
+              Импорт TXT
+            </button>
+            <button class="btn btn-soft" id="importCsvButton" type="button">
+              <i data-lucide="upload"></i>
+              Импорт CSV
+            </button>
+          </div>
+
+          <input id="txtFileInput" class="hidden-input" type="file" accept=".txt,text/plain" />
+          <input id="csvFileInput" class="hidden-input" type="file" accept=".csv,text/csv" />
+        </div>
+
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>Место</th>
+                <th>Ник</th>
+                <th>Проверки</th>
+                <th>Коины</th>
+                <th>Дата</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="moderatorsTable"></tbody>
+          </table>
+        </div>
+
+        <div class="empty-state table-empty" id="tableEmpty">
+          <i data-lucide="inbox"></i>
+          <p>Пока нет сохраненных модераторов</p>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+  </body>
+</html>
