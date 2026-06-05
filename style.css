@@ -587,6 +587,13 @@ select:focus {
   font-weight: 750;
 }
 
+.bulk-field small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .bulk-side {
   display: grid;
   gap: 12px;

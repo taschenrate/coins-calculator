@@ -648,13 +648,11 @@ function createBulkRecord(nickname, rawChecks, rawPosition, rawAmount = "", fall
     return null;
   }
 
-  const amount = parseAmountToken(rawAmount);
-
   return {
     sourcePosition: parseIntegerToken(rawPosition) || fallbackPosition,
     nickname: nickname.trim(),
     checks,
-    coins: amount === null ? calculateCoins(checks) : amount
+    coins: calculateCoins(checks)
   };
 }
 
