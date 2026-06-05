@@ -154,6 +154,68 @@
         </article>
       </section>
 
+      <section class="panel bulk-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="section-kicker">Массовый расчет</span>
+            <h2>Вставка топа</h2>
+          </div>
+          <span class="panel-icon"><i data-lucide="clipboard-list"></i></span>
+        </div>
+
+        <div class="bulk-layout">
+          <label class="bulk-field">
+            <span>Текст из таблицы</span>
+            <textarea
+              id="bulkPasteInput"
+              rows="10"
+              spellcheck="false"
+              placeholder="1&#10;fxctar&#10;242&#10;5 477 ₽&#10;&#10;2&#10;_KiKLoP_&#10;172&#10;3 893 ₽"
+            ></textarea>
+          </label>
+
+          <div class="bulk-side">
+            <div class="bulk-summary" id="bulkSummary">
+              <strong>0</strong>
+              <span>найдено строк</span>
+            </div>
+            <div class="bulk-actions">
+              <button class="btn btn-primary" id="bulkParseButton" type="button">
+                <i data-lucide="wand-sparkles"></i>
+                Рассчитать список
+              </button>
+              <button class="btn btn-success bulk-save" id="bulkSaveButton" type="button" disabled>
+                <i data-lucide="database"></i>
+                Сохранить в базу
+              </button>
+              <button class="btn btn-soft" id="bulkClearButton" type="button">
+                <i data-lucide="eraser"></i>
+                Очистить
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-shell bulk-preview-shell hidden" id="bulkPreviewShell">
+          <table>
+            <thead>
+              <tr>
+                <th>Место</th>
+                <th>Ник</th>
+                <th>Проверки</th>
+                <th>Коины</th>
+              </tr>
+            </thead>
+            <tbody id="bulkPreviewTable"></tbody>
+          </table>
+        </div>
+
+        <div class="empty-state table-empty hidden" id="bulkEmpty">
+          <i data-lucide="scan-search"></i>
+          <p>Не удалось найти строки с ником и проверками</p>
+        </div>
+      </section>
+
       <section class="panel data-panel">
         <div class="data-header">
           <div>

@@ -6,6 +6,7 @@ let moderators = [];
 let currentResult = null;
 let editingId = null;
 let topChart = null;
+let bulkPreviewRecords = [];
 
 const elements = {
   calculatorForm: document.getElementById("calculatorForm"),
@@ -28,6 +29,14 @@ const elements = {
   importCsvButton: document.getElementById("importCsvButton"),
   txtFileInput: document.getElementById("txtFileInput"),
   csvFileInput: document.getElementById("csvFileInput"),
+  bulkPasteInput: document.getElementById("bulkPasteInput"),
+  bulkParseButton: document.getElementById("bulkParseButton"),
+  bulkSaveButton: document.getElementById("bulkSaveButton"),
+  bulkClearButton: document.getElementById("bulkClearButton"),
+  bulkPreviewShell: document.getElementById("bulkPreviewShell"),
+  bulkPreviewTable: document.getElementById("bulkPreviewTable"),
+  bulkEmpty: document.getElementById("bulkEmpty"),
+  bulkSummary: document.getElementById("bulkSummary"),
   toastContainer: document.getElementById("toastContainer"),
   statModerators: document.getElementById("statModerators"),
   statChecks: document.getElementById("statChecks"),
@@ -466,6 +475,239 @@ function importFile(file) {
   reader.readAsText(file, "UTF-8");
 }
 
+function calculateBulkPaste({ silent = false } = {}) {
+  bulkPreviewRecords = parsePastedLeaderboard(elements.bulkPasteInput.value);
+  renderBulkPreview(bulkPreviewRecords.length === 0 && elements.bulkPasteInput.value.trim() !== "");
+
+  if (silent) {
+    return;
+  }
+
+  if (bulkPreviewRecords.length === 0) {
+    showToast("Не удалось найти строки с ником и проверками", "warning");
+    return;
+  }
+
+  showToast(`Рассчитано записей: ${bulkPreviewRecords.length}`, "success");
+}
+
+function saveBulkPreview() {
+  if (bulkPreviewRecords.length === 0) {
+    showToast("Сначала рассчитайте список", "warning");
+    return;
+  }
+
+  const date = getCurrentDate();
+
+  bulkPreviewRecords.forEach((record) => {
+    const moderator = {
+      nickname: record.nickname,
+      checks: record.checks,
+      coins: record.coins,
+      date
+    };
+    const existingIndex = findModeratorIndexByNickname(record.nickname);
+
+    if (existingIndex >= 0) {
+      moderators[existingIndex] = {
+        ...moderators[existingIndex],
+        ...moderator
+      };
+      return;
+    }
+
+    moderators.push({
+      id: generateId(),
+      ...moderator
+    });
+  });
+
+  saveToStorage();
+  renderAll();
+  showToast(`Список сохранен: ${bulkPreviewRecords.length}`, "success");
+}
+
+function clearBulkPaste() {
+  elements.bulkPasteInput.value = "";
+  bulkPreviewRecords = [];
+  renderBulkPreview(false);
+}
+
+function renderBulkPreview(showEmpty = false) {
+  elements.bulkSummary.querySelector("strong").textContent = formatNumber(bulkPreviewRecords.length);
+  elements.bulkSaveButton.disabled = bulkPreviewRecords.length === 0;
+  elements.bulkPreviewShell.classList.toggle("hidden", bulkPreviewRecords.length === 0);
+  elements.bulkEmpty.classList.toggle("hidden", !showEmpty || bulkPreviewRecords.length > 0);
+
+  elements.bulkPreviewTable.innerHTML = bulkPreviewRecords
+    .map(
+      (record, index) => `
+        <tr>
+          <td><span class="rank-badge ${record.sourcePosition <= 3 ? `rank-${record.sourcePosition}` : ""}">#${
+        record.sourcePosition || index + 1
+      }</span></td>
+          <td class="nickname-cell" title="${escapeHTML(record.nickname)}">${escapeHTML(record.nickname)}</td>
+          <td>${formatNumber(record.checks)}</td>
+          <td>${formatNumber(record.coins)}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  refreshIcons();
+}
+
+function parsePastedLeaderboard(content) {
+  const lines = String(content)
+    .replace(/\u00A0/g, " ")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const records = [];
+
+  lines.forEach((line) => {
+    addBulkRecord(records, parseCompactLeaderboardLine(line));
+  });
+
+  const tokens = lines.flatMap((line) => line.split(/\t+/).map((part) => part.trim()).filter(Boolean));
+  let index = 0;
+
+  while (index < tokens.length - 2) {
+    const position = tokens[index];
+    const nickname = tokens[index + 1];
+    const checks = tokens[index + 2];
+
+    if (isRankToken(position) && isNicknameToken(nickname) && isIntegerToken(checks)) {
+      const amountToken = tokens[index + 3] && isAmountToken(tokens[index + 3]) ? tokens[index + 3] : "";
+
+      addBulkRecord(records, createBulkRecord(nickname, checks, position, amountToken));
+      index += amountToken ? 4 : 3;
+      continue;
+    }
+
+    index += 1;
+  }
+
+  return dedupeBulkRecords(records);
+}
+
+function parseCompactLeaderboardLine(line) {
+  const normalizedLine = line.replace(/\t/g, " ").replace(/\s+/g, " ").trim();
+  const match = normalizedLine.match(
+    /^(\d{1,4})\s+([A-Za-zА-Яа-яЁё0-9_.-]+)\s+(\d{1,7})(?:\s+([\d\s.,]+(?:₽|р|руб\.?)?))?$/i
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return createBulkRecord(match[2], match[3], match[1], match[4] || "");
+}
+
+function createBulkRecord(nickname, rawChecks, rawPosition, rawAmount = "") {
+  const checks = parseIntegerToken(rawChecks);
+
+  if (!isNicknameToken(nickname) || checks === null) {
+    return null;
+  }
+
+  const amount = parseAmountToken(rawAmount);
+
+  return {
+    sourcePosition: parseIntegerToken(rawPosition) || 0,
+    nickname: nickname.trim(),
+    checks,
+    coins: amount === null ? calculateCoins(checks) : amount
+  };
+}
+
+function addBulkRecord(records, record) {
+  if (!record) {
+    return;
+  }
+
+  records.push({
+    ...record,
+    order: records.length
+  });
+}
+
+function dedupeBulkRecords(records) {
+  const uniqueRecords = new Map();
+
+  records.forEach((record) => {
+    const key = record.nickname.toLowerCase();
+
+    if (!uniqueRecords.has(key)) {
+      uniqueRecords.set(key, record);
+    }
+  });
+
+  return [...uniqueRecords.values()]
+    .sort((first, second) => {
+      if (first.sourcePosition !== second.sourcePosition) {
+        return first.sourcePosition - second.sourcePosition;
+      }
+
+      return first.order - second.order;
+    })
+    .map(({ order, ...record }) => record);
+}
+
+function isRankToken(value) {
+  return /^\d{1,4}$/.test(String(value).trim());
+}
+
+function isIntegerToken(value) {
+  return /^\d{1,7}$/.test(String(value).trim());
+}
+
+function isNicknameToken(value) {
+  const text = String(value).trim();
+
+  return (
+    /^[A-Za-zА-Яа-яЁё0-9_.-]+$/.test(text) &&
+    /[A-Za-zА-Яа-яЁё_]/.test(text) &&
+    !isLeaderboardHeader(text) &&
+    !isAmountToken(text)
+  );
+}
+
+function isLeaderboardHeader(value) {
+  const text = String(value).toLowerCase();
+
+  return ["позиция", "ник", "никнейм", "проверки", "зарплата", "топ"].some((word) => text.includes(word));
+}
+
+function isAmountToken(value) {
+  const text = String(value).trim();
+
+  return parseAmountToken(text) !== null && (/(₽|руб|р\.?)/i.test(text) || /\s/.test(text));
+}
+
+function parseIntegerToken(value) {
+  const text = String(value).replace(/\s/g, "");
+
+  if (!/^\d+$/.test(text)) {
+    return null;
+  }
+
+  return Number(text);
+}
+
+function parseAmountToken(value) {
+  const text = String(value || "")
+    .replace(/[^\d,.\s]/g, "")
+    .replace(/\s/g, "")
+    .replace(",", ".");
+
+  if (!text || !/^\d+(?:\.\d+)?$/.test(text)) {
+    return null;
+  }
+
+  return Math.round(Number(text));
+}
+
 function parseTXT(content) {
   const lines = content
     .split(/\r?\n/)
@@ -807,6 +1049,19 @@ elements.exportTxtButton.addEventListener("click", exportTXT);
 elements.exportCsvButton.addEventListener("click", exportCSV);
 elements.importTxtButton.addEventListener("click", () => elements.txtFileInput.click());
 elements.importCsvButton.addEventListener("click", () => elements.csvFileInput.click());
+elements.bulkParseButton.addEventListener("click", () => calculateBulkPaste());
+elements.bulkSaveButton.addEventListener("click", saveBulkPreview);
+elements.bulkClearButton.addEventListener("click", clearBulkPaste);
+
+elements.bulkPasteInput.addEventListener("paste", () => {
+  window.setTimeout(() => calculateBulkPaste({ silent: true }), 0);
+});
+
+elements.bulkPasteInput.addEventListener("input", () => {
+  if (elements.bulkPasteInput.value.trim() === "") {
+    clearBulkPaste();
+  }
+});
 
 elements.txtFileInput.addEventListener("change", (event) => {
   importFile(event.target.files[0]);

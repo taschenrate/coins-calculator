@@ -51,6 +51,7 @@ body::before {
 
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -290,9 +291,9 @@ button {
 }
 
 input,
+textarea,
 select {
   width: 100%;
-  min-height: 48px;
   border: 1px solid var(--border);
   border-radius: 14px;
   outline: none;
@@ -305,20 +306,31 @@ select {
 }
 
 input {
+  min-height: 48px;
   padding: 0 15px;
 }
 
+textarea {
+  min-height: 260px;
+  padding: 15px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
 select {
+  min-height: 48px;
   padding: 0 42px 0 44px;
   appearance: none;
   cursor: pointer;
 }
 
-input::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: rgba(156, 163, 175, 0.76);
 }
 
 input:focus,
+textarea:focus,
 select:focus {
   border-color: rgba(96, 165, 250, 0.86);
   background: rgba(8, 11, 20, 0.9);
@@ -364,6 +376,12 @@ select:focus {
 
 .btn:active {
   transform: translateY(0);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none;
 }
 
 .btn-primary {
@@ -536,6 +554,74 @@ select:focus {
 .rank-3 {
   color: #3b1d0d;
   background: linear-gradient(135deg, #fdba74, #b45309);
+}
+
+.bulk-panel {
+  overflow: hidden;
+}
+
+.bulk-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.bulk-field {
+  display: grid;
+  gap: 8px;
+}
+
+.bulk-field span {
+  color: #dbeafe;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.bulk-side {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.bulk-summary {
+  display: grid;
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid rgba(59, 130, 246, 0.22);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.08)),
+    rgba(255, 255, 255, 0.05);
+}
+
+.bulk-summary strong {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.bulk-summary span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.bulk-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.bulk-panel .btn-success {
+  width: 100%;
+  margin-top: 0;
+}
+
+.bulk-preview-shell {
+  margin-top: 16px;
+}
+
+.bulk-preview-shell table {
+  min-width: 620px;
 }
 
 .data-panel {
@@ -762,6 +848,7 @@ tbody tr:last-child td {
   }
 
   .stats-grid,
+  .bulk-layout,
   .toolbar {
     grid-template-columns: 1fr;
   }
